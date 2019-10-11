@@ -96,6 +96,10 @@ public class AugmentedImageFragment extends ArFragment {
   @Override
   protected Config getSessionConfiguration(Session session) {
     Config config = super.getSessionConfiguration(session);
+
+    // Configure auto-focus
+    config.setFocusMode(Config.FocusMode.AUTO);
+
     if (!setupAugmentedImageDatabase(config, session)) {
       SnackbarHelper.getInstance()
           .showError(getActivity(), "Could not setup augmented image database");

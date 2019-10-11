@@ -16,17 +16,36 @@
 
 package com.google.ar.sceneform.samples.augmentedimage;
 
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.ar.core.AugmentedImage;
 import com.google.ar.core.Frame;
 import com.google.ar.sceneform.FrameTime;
 import com.google.ar.sceneform.samples.common.helpers.SnackbarHelper;
 import com.google.ar.sceneform.ux.ArFragment;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -42,73 +61,150 @@ import java.util.Map;
  */
 public class AugmentedImageActivity extends AppCompatActivity {
 
-  private ArFragment arFragment;
-  private ImageView fitToScanView;
+    private ArFragment arFragment;
+    private ImageView fitToScanView;
 
-  // Augmented image and its associated center pose anchor, keyed by the augmented image in
-  // the database.
-  private final Map<AugmentedImage, AugmentedImageNode> augmentedImageMap = new HashMap<>();
+    private SensorManager sensorManager;
+    private Sensor accelerometerSensor;
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
+    private SensorDataManager sdm;
 
-    arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
-    fitToScanView = findViewById(R.id.image_view_fit_to_scan);
+    // Augmented image and its associated center pose anchor, keyed by the augmented image in
+    // the database.
+    private final Map<AugmentedImage, AugmentedImageNode> augmentedImageMap = new HashMap<>();
 
-    arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
-  }
 
-  @Override
-  protected void onResume() {
-    super.onResume();
-    if (augmentedImageMap.isEmpty()) {
-      fitToScanView.setVisibility(View.VISIBLE);
+    private void getSensorData() {
+        // Get a RequestQueue
+        RequestQueue queue = MySingleton.getInstance(this.getApplicationContext()).
+                getRequestQueue();
+
+        // make request
+        String url = "http://10.197.119.190:5000/";
+        JsonArrayRequest jsonRequest = new JsonArrayRequest(
+                Request.Method.GET,
+                url,
+                null,
+                new Response.Listener<JSONArray>() {
+                    @Override
+                    public void onResponse(JSONArray response) {
+                        Log.e("rest response!!", response.toString());
+                        String[] data = response.toString().split(",");
+                        // TODO: do something with this data
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        throw new ServerErrorException();
+                    }
+                }
+        );
+
+        // Add a request (in this example, called stringRequest) to your RequestQueue.
+        MySingleton.getInstance(this).addToRequestQueue(jsonRequest);
     }
-  }
 
-  /**
-   * Registered with the Sceneform Scene object, this method is called at the start of each frame.
-   *
-   * @param frameTime - time since last frame.
-   */
-  private void onUpdateFrame(FrameTime frameTime) {
-    Frame frame = arFragment.getArSceneView().getArFrame();
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-    // If there is no frame, just return.
-    if (frame == null) {
-      return;
+        sdm = new SensorDataManager();
+
+
+//    sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+//    accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        setContentView(R.layout.activity_main);
+
+        arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+        fitToScanView = findViewById(R.id.image_view_fit_to_scan);
+
+        arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
     }
 
-    Collection<AugmentedImage> updatedAugmentedImages =
-        frame.getUpdatedTrackables(AugmentedImage.class);
-    for (AugmentedImage augmentedImage : updatedAugmentedImages) {
-      switch (augmentedImage.getTrackingState()) {
-        case PAUSED:
-          // When an image is in PAUSED state, but the camera is not PAUSED, it has been detected,
-          // but not yet tracked.
-          String text = "Detected Image " + augmentedImage.getIndex();
-          SnackbarHelper.getInstance().showMessage(this, text);
-          break;
+//  @Override
+//  public void onSensorChanged(SensorEvent event) {
+//    // we received a sensor event. it is a good practice to check
+//    // that we received the proper event
+//    if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+//      System.out.println("got accelerometer");
+//      final double alpha = 0.8;
+//      Double[] gravity = new Double[3];
+//      Double[] linear_acceleration = new Double[3];
+//
+//      gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
+//      gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
+//      gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+//
+//      linear_acceleration[0] = event.values[0] - gravity[0];
+//      linear_acceleration[1] = event.values[1] - gravity[1];
+//      linear_acceleration[2] = event.values[2] - gravity[2];
+//
+//      System.out.println("xx: " + linear_acceleration[0] +
+//              "yy: " + linear_acceleration[1] +
+//              "zz: " + linear_acceleration[2]);
+//    }
+//
+//  }
+//
+//  @Override
+//  public void onAccuracyChanged(Sensor sensor, int i) {
+//    System.out.println("sensor accuracy changed");
+//  }
 
-        case TRACKING:
-          // Have to switch to UI Thread to update View.
-          fitToScanView.setVisibility(View.GONE);
 
-          // Create a new anchor for newly found images.
-          if (!augmentedImageMap.containsKey(augmentedImage)) {
-            AugmentedImageNode node = new AugmentedImageNode(this);
-            node.setImage(augmentedImage);
-            augmentedImageMap.put(augmentedImage, node);
-            arFragment.getArSceneView().getScene().addChild(node);
-          }
-          break;
-
-        case STOPPED:
-          augmentedImageMap.remove(augmentedImage);
-          break;
-      }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        //sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        if (augmentedImageMap.isEmpty()) {
+            fitToScanView.setVisibility(View.VISIBLE);
+        }
     }
-  }
+
+    /**
+     * Registered with the Sceneform Scene object, this method is called at the start of each frame.
+     *
+     * @param frameTime - time since last frame.
+     */
+    private void onUpdateFrame(FrameTime frameTime) {
+        getSensorData();
+        Frame frame = arFragment.getArSceneView().getArFrame();
+
+        // If there is no frame, just return.
+        if (frame == null) {
+            return;
+        }
+
+        Collection<AugmentedImage> updatedAugmentedImages =
+                frame.getUpdatedTrackables(AugmentedImage.class);
+        for (AugmentedImage augmentedImage : updatedAugmentedImages) {
+            switch (augmentedImage.getTrackingState()) {
+                case PAUSED:
+                    // When an image is in PAUSED state, but the camera is not PAUSED, it has been detected,
+                    // but not yet tracked.
+                    String text = "Detected Image " + augmentedImage.getIndex();
+                    SnackbarHelper.getInstance().showMessage(this, text);
+                    break;
+
+                case TRACKING:
+                    // Have to switch to UI Thread to update View.
+                    fitToScanView.setVisibility(View.GONE);
+
+                    // Create a new anchor for newly found images.
+                    if (!augmentedImageMap.containsKey(augmentedImage)) {
+                        AugmentedImageNode node = new AugmentedImageNode(this);
+                        node.setImage(augmentedImage);
+                        augmentedImageMap.put(augmentedImage, node);
+                        arFragment.getArSceneView().getScene().addChild(node);
+                    }
+                    break;
+
+                case STOPPED:
+                    augmentedImageMap.remove(augmentedImage);
+                    break;
+            }
+        }
+    }
 }
