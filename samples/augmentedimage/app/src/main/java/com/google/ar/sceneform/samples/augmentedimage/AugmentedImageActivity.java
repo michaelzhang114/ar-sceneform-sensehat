@@ -69,15 +69,21 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
     private SensorDataManager sdm;
 
+    private String[] output;
+
     // Augmented image and its associated center pose anchor, keyed by the augmented image in
     // the database.
     private final Map<AugmentedImage, AugmentedImageNode> augmentedImageMap = new HashMap<>();
 
-
-    private void getSensorData() {
+    /**
+     * Gets sensor data by calling the flask API
+     */
+    private String[] getSensorData() {
         // Get a RequestQueue
         RequestQueue queue = MySingleton.getInstance(this.getApplicationContext()).
                 getRequestQueue();
+
+
 
         // make request
         String url = "http://10.197.119.190:5000/";
@@ -88,8 +94,9 @@ public class AugmentedImageActivity extends AppCompatActivity {
                 new Response.Listener<JSONArray>() {
                     @Override
                     public void onResponse(JSONArray response) {
-                        Log.e("rest response!!", response.toString());
-                        String[] data = response.toString().split(",");
+                        //Log.e("rest response!!", response.toString());
+                        output = response.toString().split(",");
+                        //String[] data = response.toString().split(",");
                         // TODO: do something with this data
                     }
                 },
@@ -103,6 +110,7 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
         // Add a request (in this example, called stringRequest) to your RequestQueue.
         MySingleton.getInstance(this).addToRequestQueue(jsonRequest);
+        return output;
     }
 
     @Override
@@ -169,7 +177,9 @@ public class AugmentedImageActivity extends AppCompatActivity {
      * @param frameTime - time since last frame.
      */
     private void onUpdateFrame(FrameTime frameTime) {
-        getSensorData();
+        //Log.e("rest response!!", getSensorData());
+        //getSensorData();
+        sdm.addNewDataPoint(getSensorData());
         Frame frame = arFragment.getArSceneView().getArFrame();
 
         // If there is no frame, just return.
