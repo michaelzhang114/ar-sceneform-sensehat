@@ -167,6 +167,43 @@ public class AugmentedImageNode extends AnchorNode {
 //    cornerNode.setRenderable(llCorner.getNow(null));
   }
 
+  public void UnSetImage(AugmentedImage image) {
+
+  }
+
+
+  public void setNewImage(AugmentedImage image) {
+    this.image = image;
+
+    if (!mazeRenderable.isDone()) {
+      CompletableFuture.allOf(mazeRenderable)
+              .thenAccept((Void aVoid) -> setImage(image))
+              .exceptionally(
+                      throwable -> {
+                        Log.e(TAG, "Exception loading", throwable);
+                        return null;
+                      });
+      return;
+    }
+
+
+    // Set the anchor based on the center of the image.
+    setAnchor(image.createAnchor(image.getCenterPose()));
+
+    mazeNode = new Node();
+    mazeNode.setParent(this);
+    mazeNode.setRenderable(mazeRenderable.getNow(null));
+
+    // scaling the maze model
+    // Make sure the longest edge fits inside the image.
+    final float maze_edge_size = 600f;
+    final float max_image_edge = Math.max(image.getExtentX(), image.getExtentZ());
+    maze_scale = max_image_edge / maze_edge_size;
+
+    // Scale Y an extra 10 times to lower the maze wall.
+    mazeNode.setLocalScale(new Vector3(maze_scale, maze_scale * 0.1f, maze_scale));
+  }
+
   public AugmentedImage getImage() {
     return image;
   }

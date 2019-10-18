@@ -43,6 +43,7 @@ import com.google.ar.sceneform.ux.ArFragment;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +62,8 @@ import java.util.Map;
  */
 public class AugmentedImageActivity extends AppCompatActivity {
 
+    private int b = 0;
+
     private ArFragment arFragment;
     private ImageView fitToScanView;
 
@@ -70,6 +73,8 @@ public class AugmentedImageActivity extends AppCompatActivity {
     private SensorDataManager sdm;
 
     private String[] output;
+
+    private int frHackNum = 0;
 
     // Augmented image and its associated center pose anchor, keyed by the augmented image in
     // the database.
@@ -177,9 +182,21 @@ public class AugmentedImageActivity extends AppCompatActivity {
      * @param frameTime - time since last frame.
      */
     private void onUpdateFrame(FrameTime frameTime) {
-        //Log.e("rest response!!", getSensorData());
+        frHackNum++;
+
+        if (frHackNum % 15 == 0) {
+            sdm.addNewDataPoint(getSensorData());
+        }
+
+//        if (getSensorData() != null) {
+//            Log.e("rest response!!", Arrays.toString(getSensorData()));
+//        }
+
         //getSensorData();
-        sdm.addNewDataPoint(getSensorData());
+
+
+
+
         Frame frame = arFragment.getArSceneView().getArFrame();
 
         // If there is no frame, just return.
@@ -189,6 +206,19 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
         Collection<AugmentedImage> updatedAugmentedImages =
                 frame.getUpdatedTrackables(AugmentedImage.class);
+
+
+        if (sdm.isShaking()) {
+            Log.e("shaking now!", Integer.toString(b));
+            //arFragment.getArSceneView().getScene().onRemoveChild(node);
+            //AugmentedImageNode node = new AugmentedImageNode(this);
+//            for (AugmentedImage am : updatedAugmentedImages) {
+//                node.UnSetImage(am);
+//            }
+
+
+        }
+
         for (AugmentedImage augmentedImage : updatedAugmentedImages) {
             switch (augmentedImage.getTrackingState()) {
                 case PAUSED:
@@ -209,6 +239,18 @@ public class AugmentedImageActivity extends AppCompatActivity {
                         augmentedImageMap.put(augmentedImage, node);
                         arFragment.getArSceneView().getScene().addChild(node);
                     }
+
+                    if (sdm.isShaking() && augmentedImageMap.get(augmentedImage).getAnchor() != null) {
+                        AugmentedImageNode n = augmentedImageMap.get(augmentedImage);
+                        arFragment.getArSceneView().getScene().removeChild(n);
+                        n.getAnchor().detach();
+                        n.setParent(null);
+                        n = null;
+                        augmentedImageMap.remove(augmentedImage);
+                    }
+
+
+
                     break;
 
                 case STOPPED:

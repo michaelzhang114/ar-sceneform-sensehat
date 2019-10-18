@@ -1,9 +1,11 @@
 package com.google.ar.sceneform.samples.augmentedimage;
 
+import android.util.Log;
+
 public class SensorDataManager {
 
     private int numRequestsMade;
-    private final double ACC_THRESHOLD = 10.0;
+    private final double ACC_THRESHOLD = 2.3;
     private String[] prevData = {};
     private String[] currentData = {"2019-10-02 17:16:43.842364",
             "33.865814208984375", "1003.250732421875", "33.61266326904297",
@@ -29,6 +31,10 @@ public class SensorDataManager {
         numRequestsMade++;
         prevData = currentData;
         currentData = data;
+
+
+
+        Log.e("added new data point",  Integer.toString(numRequestsMade));
     }
 
     public int getNumRequestsMade() {
@@ -37,7 +43,12 @@ public class SensorDataManager {
 
 
 
-    private boolean isShaking() {
+    public boolean isShaking() {
+
+        if (currentData == null) {
+            return false;
+        }
+
         // Get index of accelerometers
         int accIndexX = findIndex(header, "acc_x");
         int accIndexY = findIndex(header, "acc_y");
@@ -46,6 +57,11 @@ public class SensorDataManager {
         double accX = Double.valueOf(currentData[accIndexX]);
         double accY = Double.valueOf(currentData[accIndexY]);
         double accZ = Double.valueOf(currentData[accIndexZ]);
+
+        //Log.e("currentDAta", Integer.toString(currentData.length));
+
+        Log.e("accMax", Double.toString(Math.max(Math.max(accX, accY), accZ)));
+
 
         return (accX > ACC_THRESHOLD || accY > ACC_THRESHOLD || accZ > ACC_THRESHOLD);
     }
