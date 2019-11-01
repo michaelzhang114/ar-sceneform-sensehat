@@ -18,6 +18,8 @@ package com.google.ar.sceneform.samples.hellosceneform;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+
+
 import android.os.Build;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
@@ -27,12 +29,25 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.widget.Toast;
 import com.google.ar.core.Anchor;
+import com.google.ar.core.AugmentedImageDatabase;
+import com.google.ar.core.Frame;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.rendering.Color;
+import com.google.ar.sceneform.rendering.Material;
+import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
+import com.google.ar.sceneform.rendering.Renderable;
+import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.ux.ArFragment;
+import com.google.ar.sceneform.ux.BaseTransformableNode;
 import com.google.ar.sceneform.ux.TransformableNode;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Random;
 
 /**
  * This is an example activity that uses the Sceneform UX package to make common AR tasks easier.
@@ -86,6 +101,30 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
           // Create the transformable andy and add it to the anchor.
           TransformableNode andy = new TransformableNode(arFragment.getTransformationSystem());
+          //BaseTransformableNode andy = arFragment.getTransformationSystem().getSelectedNode();
+
+          //val renderableCopy = originalRenderable.makeCopy()
+			//val changedMaterial = renderableCopy.material.makeCopy()
+			//changedMaterial.setFloat3("baseColorTint", Color(android.graphics.Color.rgb(0,255,0)))
+			//renderableCopy.material = changedMaterial
+
+
+			// change color code
+			BaseTransformableNode n = andy;
+			//BaseTransformableNode n = arFragment.getTransformationSystem().getSelectedNode();
+			if (n != null) {
+				//n.getRenderable().getMaterial().setFloat3("baseColorTint", 200,0,0);
+				andyRenderable.getMaterial().setFloat3("baseColorTint", 200,0,0);
+			}
+
+
+			Random r = new Random();
+          float max = 5f;
+          float min = 1f;
+          float random = min + r.nextFloat() * (max - min);
+//          andy.getScaleController().setMaxScale(random + 3f);
+//          andy.getScaleController().setMinScale(random);
+
           andy.setParent(anchorNode);
           andy.setRenderable(andyRenderable);
           andy.select();
@@ -120,4 +159,5 @@ public class HelloSceneformActivity extends AppCompatActivity {
     }
     return true;
   }
+
 }

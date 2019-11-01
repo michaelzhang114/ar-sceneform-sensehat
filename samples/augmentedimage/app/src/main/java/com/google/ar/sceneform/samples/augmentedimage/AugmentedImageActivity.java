@@ -37,8 +37,11 @@ import com.android.volley.toolbox.Volley;
 import com.google.ar.core.AugmentedImage;
 import com.google.ar.core.Frame;
 import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.rendering.Material;
+import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.samples.common.helpers.SnackbarHelper;
 import com.google.ar.sceneform.ux.ArFragment;
+import com.google.ar.sceneform.ux.BaseTransformableNode;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -48,6 +51,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * This application demonstrates using augmented images to place anchor nodes. app to include image
@@ -71,6 +75,7 @@ public class AugmentedImageActivity extends AppCompatActivity {
     private Sensor accelerometerSensor;
 
     private SensorDataManager sdm;
+    private Material mat = null;
 
     private String[] output;
 
@@ -136,37 +141,6 @@ public class AugmentedImageActivity extends AppCompatActivity {
         arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
     }
 
-//  @Override
-//  public void onSensorChanged(SensorEvent event) {
-//    // we received a sensor event. it is a good practice to check
-//    // that we received the proper event
-//    if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-//      System.out.println("got accelerometer");
-//      final double alpha = 0.8;
-//      Double[] gravity = new Double[3];
-//      Double[] linear_acceleration = new Double[3];
-//
-//      gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
-//      gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
-//      gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
-//
-//      linear_acceleration[0] = event.values[0] - gravity[0];
-//      linear_acceleration[1] = event.values[1] - gravity[1];
-//      linear_acceleration[2] = event.values[2] - gravity[2];
-//
-//      System.out.println("xx: " + linear_acceleration[0] +
-//              "yy: " + linear_acceleration[1] +
-//              "zz: " + linear_acceleration[2]);
-//    }
-//
-//  }
-//
-//  @Override
-//  public void onAccuracyChanged(Sensor sensor, int i) {
-//    System.out.println("sensor accuracy changed");
-//  }
-
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -188,15 +162,6 @@ public class AugmentedImageActivity extends AppCompatActivity {
             sdm.addNewDataPoint(getSensorData());
         }
 
-//        if (getSensorData() != null) {
-//            Log.e("rest response!!", Arrays.toString(getSensorData()));
-//        }
-
-        //getSensorData();
-
-
-
-
         Frame frame = arFragment.getArSceneView().getArFrame();
 
         // If there is no frame, just return.
@@ -210,13 +175,6 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
         if (sdm.isShaking()) {
             Log.e("shaking now!", Integer.toString(b));
-            //arFragment.getArSceneView().getScene().onRemoveChild(node);
-            //AugmentedImageNode node = new AugmentedImageNode(this);
-//            for (AugmentedImage am : updatedAugmentedImages) {
-//                node.UnSetImage(am);
-//            }
-
-
         }
 
         for (AugmentedImage augmentedImage : updatedAugmentedImages) {
@@ -234,19 +192,40 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
                     // Create a new anchor for newly found images.
                     if (!augmentedImageMap.containsKey(augmentedImage)) {
+                        Log.e("new anchor", Integer.toString(b));
+
                         AugmentedImageNode node = new AugmentedImageNode(this);
                         node.setImage(augmentedImage);
                         augmentedImageMap.put(augmentedImage, node);
                         arFragment.getArSceneView().getScene().addChild(node);
                     }
-
                     if (sdm.isShaking() && augmentedImageMap.get(augmentedImage).getAnchor() != null) {
-                        AugmentedImageNode n = augmentedImageMap.get(augmentedImage);
-                        arFragment.getArSceneView().getScene().removeChild(n);
-                        n.getAnchor().detach();
-                        n.setParent(null);
-                        n = null;
-                        augmentedImageMap.remove(augmentedImage);
+//                        AugmentedImageNode n = augmentedImageMap.get(augmentedImage);
+//                        arFragment.getArSceneView().getScene().removeChild(n);
+//                        n.getAnchor().detach();
+//                        n.setParent(null);
+//                        n = null;
+//                        augmentedImageMap.remove(augmentedImage);
+
+                        AugmentedImageNode node = augmentedImageMap.get(augmentedImage);
+                        ModelRenderable rend = node.getRend();
+                        if (rend == null) break;
+                        mat = rend.getMaterial().makeCopy();
+                        if (mat != null) {
+                            mat.setFloat3("baseColorTint", 200,0,0);
+                            rend.setMaterial(mat);
+                        }
+                    }
+                    else if (! sdm.isShaking() && mat != null) {
+                        Log.e("stopped shaking!", Integer.toString(b));
+                        AugmentedImageNode node = augmentedImageMap.get(augmentedImage);
+                        ModelRenderable rend = node.getRend();
+                        if (rend == null) break;
+                        mat = rend.getMaterial().makeCopy();
+                        if (mat != null) {
+                            mat.setFloat3("baseColorTint", 0,0,200);
+                            rend.setMaterial(mat);
+                        }
                     }
 
 

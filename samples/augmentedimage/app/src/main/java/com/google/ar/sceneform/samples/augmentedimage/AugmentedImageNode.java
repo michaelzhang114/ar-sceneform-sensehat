@@ -24,6 +24,8 @@ import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
+import com.google.ar.sceneform.rendering.Renderable;
+
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -44,40 +46,9 @@ public class AugmentedImageNode extends AnchorNode {
   private float maze_scale = 0.0f;
 
 
-  // Models of the 4 corners.  We use completable futures here to simplify
-  // the error handling and asynchronous loading.  The loading is started with the
-  // first construction of an instance, and then used when the image is set.
-  private static CompletableFuture<ModelRenderable> ulCorner;
-  private static CompletableFuture<ModelRenderable> urCorner;
-  private static CompletableFuture<ModelRenderable> lrCorner;
-  private static CompletableFuture<ModelRenderable> llCorner;
-
   public AugmentedImageNode(Context context) {
-
-
     mazeRenderable = ModelRenderable.builder().setSource(context, Uri.parse("GreenMaze.sfb")).build();
 
-
-
-    // old model
-//    if (ulCorner == null) {
-//      ulCorner =
-//          ModelRenderable.builder()
-//              .setSource(context, Uri.parse("models/frame_upper_left.sfb"))
-//              .build();
-//      urCorner =
-//          ModelRenderable.builder()
-//              .setSource(context, Uri.parse("models/frame_upper_right.sfb"))
-//              .build();
-//      llCorner =
-//          ModelRenderable.builder()
-//              .setSource(context, Uri.parse("models/frame_lower_left.sfb"))
-//              .build();
-//      lrCorner =
-//          ModelRenderable.builder()
-//              .setSource(context, Uri.parse("models/frame_lower_right.sfb"))
-//              .build();
-//    }
   }
 
   /**
@@ -120,6 +91,10 @@ public class AugmentedImageNode extends AnchorNode {
     setAnchor(image.createAnchor(image.getCenterPose()));
 
     mazeNode = new Node();
+
+//    mazeNode.getScaleController().setMaxScale(0.01f);
+//    mazeNode.getScaleController().setMinScale(0.01f);
+
     mazeNode.setParent(this);
     mazeNode.setRenderable(mazeRenderable.getNow(null));
 
@@ -132,39 +107,6 @@ public class AugmentedImageNode extends AnchorNode {
     // Scale Y an extra 10 times to lower the maze wall.
     mazeNode.setLocalScale(new Vector3(maze_scale, maze_scale * 0.1f, maze_scale));
 
-
-
-//    // Make the 4 corner nodes.
-//    Vector3 localPosition = new Vector3();
-//    Node cornerNode;
-//
-//    // Upper left corner.
-//    localPosition.set(-0.5f * image.getExtentX(), 0.0f, -0.5f * image.getExtentZ());
-//    cornerNode = new Node();
-//    cornerNode.setParent(this);
-//    cornerNode.setLocalPosition(localPosition);
-//    cornerNode.setRenderable(ulCorner.getNow(null));
-//
-//    // Upper right corner.
-//    localPosition.set(0.5f * image.getExtentX(), 0.0f, -0.5f * image.getExtentZ());
-//    cornerNode = new Node();
-//    cornerNode.setParent(this);
-//    cornerNode.setLocalPosition(localPosition);
-//    cornerNode.setRenderable(urCorner.getNow(null));
-//
-//    // Lower right corner.
-//    localPosition.set(0.5f * image.getExtentX(), 0.0f, 0.5f * image.getExtentZ());
-//    cornerNode = new Node();
-//    cornerNode.setParent(this);
-//    cornerNode.setLocalPosition(localPosition);
-//    cornerNode.setRenderable(lrCorner.getNow(null));
-//
-//    // Lower left corner.
-//    localPosition.set(-0.5f * image.getExtentX(), 0.0f, 0.5f * image.getExtentZ());
-//    cornerNode = new Node();
-//    cornerNode.setParent(this);
-//    cornerNode.setLocalPosition(localPosition);
-//    cornerNode.setRenderable(llCorner.getNow(null));
   }
 
   public void UnSetImage(AugmentedImage image) {
@@ -206,5 +148,9 @@ public class AugmentedImageNode extends AnchorNode {
 
   public AugmentedImage getImage() {
     return image;
+  }
+
+  public ModelRenderable getRend() {
+    return mazeRenderable.getNow( null);
   }
 }
