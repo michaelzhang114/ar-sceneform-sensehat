@@ -28,6 +28,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.widget.Toast;
+
 import com.google.ar.core.Anchor;
 import com.google.ar.core.AugmentedImageDatabase;
 import com.google.ar.core.Frame;
@@ -35,6 +36,8 @@ import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.math.Quaternion;
+import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.Color;
 import com.google.ar.sceneform.rendering.Material;
 import com.google.ar.sceneform.rendering.MaterialFactory;
@@ -44,120 +47,175 @@ import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.BaseTransformableNode;
 import com.google.ar.sceneform.ux.TransformableNode;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+
+
+import org.json.JSONArray;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.Vector;
 
 /**
  * This is an example activity that uses the Sceneform UX package to make common AR tasks easier.
  */
 public class HelloSceneformActivity extends AppCompatActivity {
-  private static final String TAG = HelloSceneformActivity.class.getSimpleName();
-  private static final double MIN_OPENGL_VERSION = 3.0;
+    private static final String TAG = HelloSceneformActivity.class.getSimpleName();
+    private static final double MIN_OPENGL_VERSION = 3.0;
+    private int b = 1;
+    private ArFragment arFragment;
+    private ModelRenderable andyRenderable;
+    private int frHackNum = 0;
+    private String[] output;
+    private SensorDataManager sdm;
+    private List<TransformableNode> tnodes;
 
-  private ArFragment arFragment;
-  private ModelRenderable andyRenderable;
+    /**
+     * Gets sensor data by calling the flask API
+     */
+    private String[] getSensorData() {
+        // Get a RequestQueue
+        RequestQueue queue = MySingleton.getInstance(this.getApplicationContext()).
+                getRequestQueue();
 
-  @Override
-  @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
-  // CompletableFuture requires api level 24
-  // FutureReturnValueIgnored is not valid
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
+        // make request
+        String url = "http://10.197.119.190:5000/"; //lab
+        //String url = "http://192.168.0.42:5000/"; //home
+        JsonArrayRequest jsonRequest = new JsonArrayRequest(
+                Request.Method.GET,
+                url,
+                null,
+                new Response.Listener<JSONArray>() {
+                    @Override
+                    public void onResponse(JSONArray response) {
+                        Log.e("rest response!!", response.toString());
+                        output = response.toString().split(",");
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e("hihihi", error.toString());
+                        throw new ServerErrorException();
+                    }
+                }
+        );
 
-    if (!checkIsSupportedDeviceOrFinish(this)) {
-      return;
+        // Add a request (in this example, called stringRequest) to your RequestQueue.
+        MySingleton.getInstance(this).addToRequestQueue(jsonRequest);
+        return output;
     }
 
-    setContentView(R.layout.activity_ux);
-    arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
-    // When you build a Renderable, Sceneform loads its resources in the background while returning
-    // a CompletableFuture. Call thenAccept(), handle(), or check isDone() before calling get().
-    ModelRenderable.builder()
-        .setSource(this, R.raw.andy)
-        .build()
-        .thenAccept(renderable -> andyRenderable = renderable)
-        .exceptionally(
-            throwable -> {
-              Toast toast =
-                  Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG);
-              toast.setGravity(Gravity.CENTER, 0, 0);
-              toast.show();
-              return null;
-            });
+    @Override
+    @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
+    // CompletableFuture requires api level 24
+    // FutureReturnValueIgnored is not valid
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-    arFragment.setOnTapArPlaneListener(
-        (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
-          if (andyRenderable == null) {
+        sdm = new SensorDataManager();
+        tnodes = new ArrayList<>();
+        if (!checkIsSupportedDeviceOrFinish(this)) {
             return;
-          }
+        }
 
-          // Create the Anchor.
-          Anchor anchor = hitResult.createAnchor();
-          AnchorNode anchorNode = new AnchorNode(anchor);
-          anchorNode.setParent(arFragment.getArSceneView().getScene());
+        setContentView(R.layout.activity_ux);
+        arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+        //arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
 
-          // Create the transformable andy and add it to the anchor.
-          TransformableNode andy = new TransformableNode(arFragment.getTransformationSystem());
-          //BaseTransformableNode andy = arFragment.getTransformationSystem().getSelectedNode();
+        // When you build a Renderable, Sceneform loads its resources in the background while returning
+        // a CompletableFuture. Call thenAccept(), handle(), or check isDone() before calling get().
+        ModelRenderable.builder()
+                .setSource(this, R.raw.andy)
+                .build()
+                .thenAccept(renderable -> andyRenderable = renderable)
+                .exceptionally(
+                        throwable -> {
+                            Toast toast =
+                                    Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG);
+                            toast.setGravity(Gravity.CENTER, 0, 0);
+                            toast.show();
+                            return null;
+                        });
 
-          //val renderableCopy = originalRenderable.makeCopy()
-			//val changedMaterial = renderableCopy.material.makeCopy()
-			//changedMaterial.setFloat3("baseColorTint", Color(android.graphics.Color.rgb(0,255,0)))
-			//renderableCopy.material = changedMaterial
+        arFragment.setOnTapArPlaneListener(
+                (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
+                    if (andyRenderable == null) {
+                        return;
+                    }
 
+                    // Create the Anchor.
+                    Anchor anchor = hitResult.createAnchor();
+                    AnchorNode anchorNode = new AnchorNode(anchor);
+                    anchorNode.setParent(arFragment.getArSceneView().getScene());
 
-			// change color code
-			BaseTransformableNode n = andy;
-			//BaseTransformableNode n = arFragment.getTransformationSystem().getSelectedNode();
-			if (n != null) {
-				//n.getRenderable().getMaterial().setFloat3("baseColorTint", 200,0,0);
-				andyRenderable.getMaterial().setFloat3("baseColorTint", 200,0,0);
-			}
+                    // Create the transformable andy and add it to the anchor.
+                    TransformableNode andy = new TransformableNode(arFragment.getTransformationSystem());
+                    tnodes.add(andy);
 
+                    String pos = andy.getLocalPosition().toString();
+                    Log.e("andy position", pos);
 
-			Random r = new Random();
-          float max = 5f;
-          float min = 1f;
-          float random = min + r.nextFloat() * (max - min);
-//          andy.getScaleController().setMaxScale(random + 3f);
-//          andy.getScaleController().setMinScale(random);
-
-          andy.setParent(anchorNode);
-          andy.setRenderable(andyRenderable);
-          andy.select();
-        });
-  }
-
-  /**
-   * Returns false and displays an error message if Sceneform can not run, true if Sceneform can run
-   * on this device.
-   *
-   * <p>Sceneform requires Android N on the device as well as OpenGL 3.0 capabilities.
-   *
-   * <p>Finishes the activity if Sceneform can not run
-   */
-  public static boolean checkIsSupportedDeviceOrFinish(final Activity activity) {
-    if (Build.VERSION.SDK_INT < VERSION_CODES.N) {
-      Log.e(TAG, "Sceneform requires Android N or later");
-      Toast.makeText(activity, "Sceneform requires Android N or later", Toast.LENGTH_LONG).show();
-      activity.finish();
-      return false;
+                    andy.setParent(anchorNode);
+                    andy.setRenderable(andyRenderable);
+                    andy.select();
+                });
+        arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
     }
-    String openGlVersionString =
-        ((ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE))
-            .getDeviceConfigurationInfo()
-            .getGlEsVersion();
-    if (Double.parseDouble(openGlVersionString) < MIN_OPENGL_VERSION) {
-      Log.e(TAG, "Sceneform requires OpenGL ES 3.0 later");
-      Toast.makeText(activity, "Sceneform requires OpenGL ES 3.0 or later", Toast.LENGTH_LONG)
-          .show();
-      activity.finish();
-      return false;
-    }
-    return true;
-  }
 
+    /**
+     * Returns false and displays an error message if Sceneform can not run, true if Sceneform can run
+     * on this device.
+     *
+     * <p>Sceneform requires Android N on the device as well as OpenGL 3.0 capabilities.
+     *
+     * <p>Finishes the activity if Sceneform can not run
+     */
+    public static boolean checkIsSupportedDeviceOrFinish(final Activity activity) {
+        if (Build.VERSION.SDK_INT < VERSION_CODES.N) {
+            Log.e(TAG, "Sceneform requires Android N or later");
+            Toast.makeText(activity, "Sceneform requires Android N or later", Toast.LENGTH_LONG).show();
+            activity.finish();
+            return false;
+        }
+        String openGlVersionString =
+                ((ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE))
+                        .getDeviceConfigurationInfo()
+                        .getGlEsVersion();
+        if (Double.parseDouble(openGlVersionString) < MIN_OPENGL_VERSION) {
+            Log.e(TAG, "Sceneform requires OpenGL ES 3.0 later");
+            Toast.makeText(activity, "Sceneform requires OpenGL ES 3.0 or later", Toast.LENGTH_LONG)
+                    .show();
+            activity.finish();
+            return false;
+        }
+        return true;
+    }
+
+    private void onUpdateFrame(FrameTime frameTime) {
+        frHackNum++;
+        if (frHackNum % 2 == 0) {
+            try {
+                sdm.addNewDataPoint(getSensorData());
+            } catch (Exception e) {
+                Log.e("ERROR WITH DATA", e.getMessage());
+            }
+        }
+
+        for (TransformableNode t : tnodes) {
+            Quaternion r1 = Quaternion.axisAngle(new Vector3(0.0f, 1.0f, 0.0f), sdm.orientationYaw());
+            Quaternion r2 = Quaternion.axisAngle(new Vector3(1.0f, 0.0f, 0.0f), sdm.orientationPitch());
+            Quaternion r3 = Quaternion.axisAngle(new Vector3(0.0f, 0.0f, 1.0f), sdm.orientationRoll());
+            t.setLocalRotation(Quaternion.multiply(Quaternion.multiply(r1, r2), r3));
+        }
+    }
 }

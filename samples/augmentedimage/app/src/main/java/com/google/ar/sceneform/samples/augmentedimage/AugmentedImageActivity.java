@@ -24,8 +24,11 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -34,14 +37,21 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.ar.core.Anchor;
 import com.google.ar.core.AugmentedImage;
 import com.google.ar.core.Frame;
+import com.google.ar.core.HitResult;
+import com.google.ar.core.Plane;
+import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.math.Quaternion;
+import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.Material;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.samples.common.helpers.SnackbarHelper;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.BaseTransformableNode;
+import com.google.ar.sceneform.ux.TransformableNode;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -51,6 +61,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -67,18 +78,14 @@ import java.util.concurrent.CompletableFuture;
 public class AugmentedImageActivity extends AppCompatActivity {
 
     private int b = 0;
-
     private ArFragment arFragment;
     private ImageView fitToScanView;
-
+    private ModelRenderable andyRenderable;
     private SensorManager sensorManager;
     private Sensor accelerometerSensor;
-
     private SensorDataManager sdm;
     private Material mat = null;
-
     private String[] output;
-
     private int frHackNum = 0;
 
     // Augmented image and its associated center pose anchor, keyed by the augmented image in
@@ -92,11 +99,9 @@ public class AugmentedImageActivity extends AppCompatActivity {
         // Get a RequestQueue
         RequestQueue queue = MySingleton.getInstance(this.getApplicationContext()).
                 getRequestQueue();
-
-
-
         // make request
-        String url = "http://10.197.119.190:5000/";
+        //String url = "http://10.197.119.190:5000/";
+        String url = "http://192.168.0.42:5000/";
         JsonArrayRequest jsonRequest = new JsonArrayRequest(
                 Request.Method.GET,
                 url,
@@ -126,15 +131,11 @@ public class AugmentedImageActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         sdm = new SensorDataManager();
-
-
 //    sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 //    accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
         setContentView(R.layout.activity_main);
-
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
         fitToScanView = findViewById(R.id.image_view_fit_to_scan);
 
@@ -199,7 +200,7 @@ public class AugmentedImageActivity extends AppCompatActivity {
                         augmentedImageMap.put(augmentedImage, node);
                         arFragment.getArSceneView().getScene().addChild(node);
                     }
-                    if (sdm.isShaking() && augmentedImageMap.get(augmentedImage).getAnchor() != null) {
+                    if (sdm.pitchUp() && augmentedImageMap.get(augmentedImage).getAnchor() != null) {
 //                        AugmentedImageNode n = augmentedImageMap.get(augmentedImage);
 //                        arFragment.getArSceneView().getScene().removeChild(n);
 //                        n.getAnchor().detach();
@@ -208,6 +209,10 @@ public class AugmentedImageActivity extends AppCompatActivity {
 //                        augmentedImageMap.remove(augmentedImage);
 
                         AugmentedImageNode node = augmentedImageMap.get(augmentedImage);
+                        //BaseTransformableNode tn = (BaseTransformableNode) augmentedImageMap.get(augmentedImage);
+
+                        //node.setLocalRotation(Quaternion.axisAngle(new Vector3(0.0f, 1.0f, 0.0f), 50.0f));
+
                         ModelRenderable rend = node.getRend();
                         if (rend == null) break;
                         mat = rend.getMaterial().makeCopy();
@@ -216,9 +221,11 @@ public class AugmentedImageActivity extends AppCompatActivity {
                             rend.setMaterial(mat);
                         }
                     }
-                    else if (! sdm.isShaking() && mat != null) {
+                    else if (! sdm.pitchUp() && mat != null) {
                         Log.e("stopped shaking!", Integer.toString(b));
                         AugmentedImageNode node = augmentedImageMap.get(augmentedImage);
+                        //node.setLocalRotation(Quaternion.axisAngle(new Vector3(0.0f, 1.0f, 0.0f), -50.0f));
+
                         ModelRenderable rend = node.getRend();
                         if (rend == null) break;
                         mat = rend.getMaterial().makeCopy();
@@ -227,9 +234,6 @@ public class AugmentedImageActivity extends AppCompatActivity {
                             rend.setMaterial(mat);
                         }
                     }
-
-
-
                     break;
 
                 case STOPPED:

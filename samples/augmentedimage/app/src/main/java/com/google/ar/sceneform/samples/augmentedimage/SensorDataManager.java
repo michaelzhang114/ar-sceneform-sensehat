@@ -75,4 +75,11 @@ public class SensorDataManager {
         }
         throw new RuntimeException();
     }
+
+    public boolean pitchUp() {
+        int pitchIndex = findIndex(header, "pitch");
+        double pitch = Double.valueOf(currentData[pitchIndex]);
+        return (1 <= pitch && pitch <= 179);
+    }
+
 }

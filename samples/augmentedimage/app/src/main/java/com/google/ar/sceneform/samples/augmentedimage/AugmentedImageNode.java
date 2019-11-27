@@ -43,12 +43,13 @@ public class AugmentedImageNode extends AnchorNode {
   // Holds the maze model
   private Node mazeNode;
   private CompletableFuture<ModelRenderable> mazeRenderable; // loads the sfb file
+  //private CompletableFuture<ModelRenderable> andyRenderable;
   private float maze_scale = 0.0f;
 
 
   public AugmentedImageNode(Context context) {
     mazeRenderable = ModelRenderable.builder().setSource(context, Uri.parse("GreenMaze.sfb")).build();
-
+    //andyRenderable = ModelRenderable.builder().setSource(context, Uri.parse("andy.sfb")).build();
   }
 
   /**
@@ -60,17 +61,6 @@ public class AugmentedImageNode extends AnchorNode {
   @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
   public void setImage(AugmentedImage image) {
     this.image = image;
-
-//    // If any of the models are not loaded, then recurse when all are loaded.
-//    if (!ulCorner.isDone() || !urCorner.isDone() || !llCorner.isDone() || !lrCorner.isDone()) {
-//      CompletableFuture.allOf(ulCorner, urCorner, llCorner, lrCorner)
-//          .thenAccept((Void aVoid) -> setImage(image))
-//          .exceptionally(
-//              throwable -> {
-//                Log.e(TAG, "Exception loading", throwable);
-//                return null;
-//              });
-//    }
 
     // Initialize mazeNode and set its parents and the Renderable.
     // If any of the models are not loaded, process this function
@@ -85,6 +75,16 @@ public class AugmentedImageNode extends AnchorNode {
                       });
       return;
     }
+//    if (!andyRenderable.isDone()) {
+//      CompletableFuture.allOf(andyRenderable)
+//              .thenAccept((Void aVoid) -> setImage(image))
+//              .exceptionally(
+//                      throwable -> {
+//                        Log.e(TAG, "Exception loading", throwable);
+//                        return null;
+//                      });
+//      return;
+//    }
 
 
     // Set the anchor based on the center of the image.
@@ -106,10 +106,6 @@ public class AugmentedImageNode extends AnchorNode {
 
     // Scale Y an extra 10 times to lower the maze wall.
     mazeNode.setLocalScale(new Vector3(maze_scale, maze_scale * 0.1f, maze_scale));
-
-  }
-
-  public void UnSetImage(AugmentedImage image) {
 
   }
 
